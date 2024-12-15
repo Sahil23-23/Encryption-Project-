@@ -46,6 +46,16 @@ class FirstScreen(Screen):
             valign="top",
         )
         layout.add_widget(label)
+        sender_label = Label(
+            text="Sender-Interface",
+            font_size=30,
+            bold=True,
+            color=(1, .1, 0, 1),
+            size_hint=(1, 0.2),
+            halign="center",
+            valign="top",
+        )
+        layout.add_widget(sender_label)
         image=Image(source="cyber-security-quotes_silver-bullet.jpg", size_hint=(1, 0.5))
         layout.add_widget(image)
         
@@ -150,65 +160,81 @@ class SecondScreen(Screen):
         self.result_input.text = ""
         
     def encrypt_message(self, instance):
-        # Get input message and public key
-        message = self.message_input.text.strip()
-        public_key_pem = self.public_key_receiver.text.strip()
+    # Get input message and public key
+      message = self.message_input.text.strip()
+      public_key_pem = self.public_key_receiver.text.strip()
 
-        # Validate inputs
-        if not message:
-            self.result_input.text = "Error: Please enter a message to encrypt."
-            return
+    # Validate inputs
+      if not message:
+        self.result_input.text = "Error: Please enter a message to encrypt."
+        return
 
-        if not public_key_pem:
-            self.result_input.text = "Error: Please enter the receiver's public key."
-            return
+      if not public_key_pem:
+        self.result_input.text = "Error: Please enter the receiver's public key."
+        return
 
-        try:
-            # Validate public key format
-            if not (public_key_pem.startswith("-----BEGIN PUBLIC KEY-----") and 
-                    public_key_pem.endswith("-----END PUBLIC KEY-----")):
-                raise ValueError("The provided public key is not in a valid PEM format.")
+      try:
+        # Validate public key format
+        if not (public_key_pem.startswith("-----BEGIN PUBLIC KEY-----") and 
+                public_key_pem.endswith("-----END PUBLIC KEY-----")):
+            raise ValueError("The provided public key is not in a valid PEM format.")
 
-            # Import the public key
-            public_key = RSA.import_key(public_key_pem)
+        # Import the public key
+        from Crypto.PublicKey import RSA
+        from Crypto.Cipher import PKCS1_OAEP
+        import base64
 
-            # Encrypt the message using PKCS1_OAEP
-            cipher = PKCS1_OAEP.new(public_key)
-            encrypted_message = cipher.encrypt(message.encode())
+        public_key = RSA.import_key(public_key_pem)
 
-            # Encode the encrypted message in base64 for readability
-            self.encrypted_message = base64.b64encode(encrypted_message).decode()
+        # Encrypt the message using PKCS1_OAEP
+        cipher = PKCS1_OAEP.new(public_key)
+        encrypted_message = cipher.encrypt(message.encode())
 
-            # Display the encrypted message
-            self.result_input.text = f"Encrypted Message:\n{self.encrypted_message}"
-        except Exception as e:
-            self.result_input.text = f"Error during encryption: {e}"
+        # Encode the encrypted message in base64 for readability
+        encrypted_message_base64 = base64.b64encode(encrypted_message).decode()
+
+        # Store the encrypted message for sharing
+        self.encrypted_message = encrypted_message_base64
+
+        # Display the encrypted message
+        self.result_input.text = f"Encrypted Message:\n{encrypted_message_base64}"
+      except Exception as e:
+        self.result_input.text = f"Error during encryption: {e}"
 
     def share_message(self, instance):
+    # Check if there is an encrypted message to share
       if not hasattr(self, 'encrypted_message') or not self.encrypted_message:
         popup = Popup(title="Error", content=Label(text="No encrypted message generated yet!"), size_hint=(0.8, 0.4))
         popup.open()
         return
 
-      if platform == 'android':
-        from jnius import autoclass
-        from pythonforandroid import activity
+      try:
+        if platform == 'android':
+            from jnius import autoclass
+            from android import activity  # Ensure `android` is properly imported
 
-        Intent = autoclass('android.content.Intent')
-        String = autoclass('java.lang.String')
+            Intent = autoclass('android.content.Intent')
+            String = autoclass('java.lang.String')
 
-        intent = Intent(Intent.ACTION_SEND)
-        intent.setType('text/plain')
-        intent.putExtra(Intent.EXTRA_TEXT, String(self.encrypted_message))  # Use the encrypted message here
+            intent = Intent(Intent.ACTION_SEND)
+            intent.setType('text/plain')
+            intent.putExtra(Intent.EXTRA_TEXT, String(self.encrypted_message))  # Use the encrypted message here
 
-        chooser = Intent.createChooser(intent, String('Share Encrypted Message'))
-        activity.startActivity(chooser)
-      else:
-            file_path = os.path.abspath("encrypted_message.pem")
+            chooser = Intent.createChooser(intent, String('Share Encrypted Message'))
+            activity.startActivity(chooser)
+        else:
+            # Save the encrypted message to a file and open it
+            file_path = os.path.abspath("Sender\encrypted_message.pem")
+            with open(file_path, "w") as f:
+                f.write(self.encrypted_message)
+
             if os.name == "posix":
                 webbrowser.open(f"file://{file_path}")
             else:
                 os.startfile(file_path)
+      except Exception as e:
+        popup = Popup(title="Error", content=Label(text=f"Error sharing message: {e}"), size_hint=(0.8, 0.4))
+        popup.open()
 
                 
     def go_back(self, instance):
