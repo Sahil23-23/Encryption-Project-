@@ -26,7 +26,7 @@ import os
 import webbrowser
 from Crypto.Cipher import PKCS1_OAEP
 
-def decode_message(self,message_input):
+def decode_message(self):
     # Get the encrypted message and receiver's private key
     encrypted_message_base64 = self.message_input.text.strip()
     private_key_pem = self.private_key_receiver.text.strip()
@@ -41,11 +41,6 @@ def decode_message(self,message_input):
         return
 
     try:
-        # Validate private key format
-        if not (private_key_pem.startswith("-----BEGIN PRIVATE KEY-----") and 
-                private_key_pem.endswith("-----END PRIVATE KEY-----")):
-            raise ValueError("The provided private key is not in a valid PEM format.")
-
         # Decode the Base64-encoded encrypted message
         import base64
         from Crypto.PublicKey import RSA
@@ -62,6 +57,8 @@ def decode_message(self,message_input):
 
         # Display the decrypted message
         self.result_input.text = f"Decrypted Message:\n{decrypted_message}"
+    except ValueError as ve:
+        self.result_input.text = f"Private Key Error: {ve}"
     except Exception as e:
         self.result_input.text = f"Error during decryption: {e}"
 
@@ -85,6 +82,16 @@ class FirstScreen(Screen):
             valign="top",
         )
         layout.add_widget(label)
+        receiver_label = Label(
+            text="Receiver-Interface",
+            font_size=30,
+            bold=True,
+            color=(1, .1, 0, 1),
+            size_hint=(1, 0.2),
+            halign="center",
+            valign="top",
+        )
+        layout.add_widget(receiver_label)
         image=Image(source="cyber-security-quotes_silver-bullet.jpg", size_hint=(1, 0.5))
         layout.add_widget(image)
         
@@ -123,7 +130,7 @@ class SecondScreen(Screen):
         )
         layout.add_widget(title)
 
-        self.qr_image = Image(size_hint=(0.5, 0.5),pos_hint={'x':.25 , 'y': 0})  # Placeholder for the QR code
+        self.qr_image = Image(size_hint=(0.3, 0.3),pos_hint={'x':.25 , 'y': 0})  # Placeholder for the QR code
         layout.add_widget(self.qr_image)
 
         button_layout = BoxLayout(size_hint=(1, 0.2), spacing=20)
@@ -193,9 +200,9 @@ class SecondScreen(Screen):
             self.result_input.text = f"Public Key:\n{public_key}\n\nPrivate Key:\n{private_key}"
 
             # Save keys to files
-            with open("public_key.pem", "w") as pub_file:
+            with open("Receiver\public_key.pem", "w") as pub_file:
                 pub_file.write(public_key)
-            with open("private_key.pem", "w") as priv_file:
+            with open("Receiver\private_key.pem", "w") as priv_file:
                 priv_file.write(private_key)
             self.result_input.text += "\n\nKeys saved to 'public_key.pem' and 'private_key.pem'"
 
@@ -239,7 +246,7 @@ class SecondScreen(Screen):
             chooser = Intent.createChooser(intent, String('Share Public Key'))
             activity.startActivity(chooser)
         else:
-            file_path = os.path.abspath("public_key.pem")
+            file_path = os.path.abspath("Receiver\public_key.pem")
             if os.name == "posix":
                 webbrowser.open(f"file://{file_path}")
             else:
@@ -289,12 +296,22 @@ class ThirdScreen(Screen):
         reset_button = Button(
             text="Reset",
             on_press=self.reset_fields,
-            background_color=(0, 0, 1, 1),
+            size_hint=(None, None),
+            size=(200, 60),
+            font_size=24,
+            background_normal="",
+            background_color=(0.5,0,0.8, 1),
+            color=(1, 1, 1, 1),
         )
         back_button = Button(
             text="Back",
             on_press=self.go_back,
-            background_color=(0.5, 0.5, 0.5, 1),
+            size_hint=(None, None),
+            size=(200, 60),
+            font_size=24,
+            background_normal="",
+            background_color=(1, 0.5, 0, 1),
+            color=(1, 1, 1, 1),
         )
 
         button_layout.add_widget(decrypted_button)
@@ -314,7 +331,7 @@ class ThirdScreen(Screen):
         self.add_widget(layout)
 
     def decrypt_message(self, instance):
-        # Pass input to decode_message
+        # Pass input to `decode_message`
         self.decode_message()
 
     def decode_message(self):
@@ -373,3 +390,4 @@ class ReceiverCyber(App):
     
 if __name__=="__main__":
     ReceiverCyber().run()
+    
